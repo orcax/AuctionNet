@@ -69,7 +69,7 @@ def add_to_replay_buffer(replay_buffer, training_data, is_normalize):
             replay_buffer.push(np.array(state), np.array([action]), np.array([reward]), np.zeros_like(state),
                                np.array([done]))
 
-def train_model_steps(model, replay_buffer, step_num=100, batch_size=100):
+def train_model_steps(model, replay_buffer, step_num=20000, batch_size=100):
     for i in range(step_num):
         if i==8000:
             pass
