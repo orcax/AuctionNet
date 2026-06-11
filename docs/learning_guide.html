@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>AuctionNet Learning Guide</title>
+<style>
+  :root {
+    --bg: #0f1419; --panel: #1a2129; --panel2: #222b35; --text: #d7dde4;
+    --muted: #97a3b0; --accent: #4aa3df; --accent2: #6dd29a; --warn: #e0b341;
+    --border: #2c3743; --code-bg: #11171d;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font: 16px/1.6 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .wrap { max-width: 920px; margin: 0 auto; padding: 32px 20px 80px; }
+  header h1 { font-size: 2rem; margin: 0 0 6px; }
+  header p.sub { color: var(--muted); margin: 0 0 20px; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { background: var(--code-bg); padding: 1px 6px; border-radius: 4px;
+         font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 0.88em; color: #e6c07b; }
+  pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px;
+        padding: 14px 16px; overflow-x: auto; font-size: 0.85rem; line-height: 1.5; }
+  pre code { background: none; padding: 0; color: var(--text); }
+  .controls { display: flex; gap: 10px; margin: 0 0 24px; flex-wrap: wrap; }
+  .controls button {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--border);
+    padding: 7px 14px; border-radius: 6px; cursor: pointer; font-size: 0.85rem;
+  }
+  .controls button:hover { border-color: var(--accent); color: #fff; }
+  .toc { background: var(--panel); border: 1px solid var(--border); border-radius: 10px;
+         padding: 16px 20px; margin-bottom: 28px; }
+  .toc ol { margin: 8px 0 0; padding-left: 22px; columns: 2; }
+  .toc li { margin: 3px 0; }
+  details.section { background: var(--panel); border: 1px solid var(--border);
+    border-radius: 10px; margin: 0 0 14px; overflow: hidden; }
+  details.section > summary {
+    cursor: pointer; padding: 16px 20px; font-size: 1.15rem; font-weight: 600;
+    list-style: none; display: flex; align-items: center; gap: 10px; user-select: none;
+  }
+  details.section > summary::-webkit-details-marker { display: none; }
+  details.section > summary::before {
+    content: "▸"; color: var(--accent); transition: transform .15s; font-size: 0.9em;
+  }
+  details.section[open] > summary::before { transform: rotate(90deg); }
+  details.section > summary:hover { background: var(--panel2); }
+  .section .body { padding: 4px 24px 22px; }
+  .num { color: var(--muted); font-weight: 600; margin-right: 4px; }
+  details.more { background: var(--panel2); border: 1px solid var(--border);
+    border-left: 3px solid var(--accent); border-radius: 6px; margin: 12px 0; }
+  details.more > summary { cursor: pointer; padding: 9px 14px; font-size: 0.9rem;
+    color: var(--accent); list-style: none; font-weight: 500; }
+  details.more > summary::-webkit-details-marker { display: none; }
+  details.more > summary::before { content: "+ "; font-weight: 700; }
+  details.more[open] > summary::before { content: "− "; }
+  details.more .more-body { padding: 4px 16px 14px; }
+  table { border-collapse: collapse; width: 100%; margin: 14px 0; font-size: 0.9rem; }
+  th, td { border: 1px solid var(--border); padding: 8px 10px; text-align: left; vertical-align: top; }
+  th { background: var(--panel2); }
+  .callout { border-left: 3px solid var(--warn); background: rgba(224,179,65,.08);
+    padding: 10px 16px; border-radius: 6px; margin: 14px 0; }
+  .key { border-left: 3px solid var(--accent2); background: rgba(109,210,154,.08);
+    padding: 10px 16px; border-radius: 6px; margin: 14px 0; }
+  .tag { display: inline-block; font-size: 0.72rem; padding: 2px 8px; border-radius: 20px;
+    background: var(--panel2); border: 1px solid var(--border); color: var(--muted); margin-left: 6px; }
+  h3 { margin: 20px 0 8px; font-size: 1.05rem; color: #fff; }
+  footer { color: var(--muted); font-size: 0.85rem; margin-top: 40px;
+    border-top: 1px solid var(--border); padding-top: 16px; }
+  ol.path { font-size: 0.95rem; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<header>
+  <h1>AuctionNet Learning Guide</h1>
+  <p class="sub">How the bidding models work and how they are evaluated &mdash; grounded in this repo's code. Click any section to expand; use the <em>+ more</em> blocks for deeper dives.</p>
+</header>
+
+<div class="controls">
+  <button onclick="document.querySelectorAll('details').forEach(d=>d.open=true)">Expand all</button>
+  <button onclick="document.querySelectorAll('details').forEach(d=>d.open=false)">Collapse all</button>
+</div>
+
+<nav class="toc">
+  <strong>Contents</strong>
+  <ol>
+    <li><a href="#s1">The one-sentence model</a></li>
+    <li><a href="#s2">The MDP (the spine)</a></li>
+    <li><a href="#s3">How a model bids (IQL)</a></li>
+    <li><a href="#s4">The algorithm families</a></li>
+    <li><a href="#s5">IQL deep dive</a></li>
+    <li><a href="#s6">Offline-RL side by side</a></li>
+    <li><a href="#s7">How evaluation works</a></li>
+    <li><a href="#s8">Hands-on exercises</a></li>
+    <li><a href="#s9">Glossary</a></li>
+    <li><a href="#s10">Where to go next</a></li>
+  </ol>
+</nav>
+
+<details class="section" id="s1" open>
+  <summary><span class="num">1.</span> The one-sentence mental model</summary>
+  <div class="body">
+    <p>Every algorithm in this repo solves the same tiny decision: <strong>once per time step, pick a single number <code>α</code> (a &ldquo;bid coefficient&rdquo;); then bid <code>α × pValue</code> on every ad opportunity that step.</strong> Everything else &mdash; RL, LP, transformers &mdash; is just different machinery for choosing <code>α</code> well under a budget and a cost-per-acquisition (CPA) constraint.</p>
+    <div class="key">Before any code, the whole problem is: <em>&ldquo;how aggressive should I bid right now, given how much budget and time I have left, and how the market is behaving?&rdquo;</em></div>
+  </div>
+</details>
+
+<details class="section" id="s2">
+  <summary><span class="num">2.</span> The MDP &mdash; learn this first</summary>
+  <div class="body">
+    <table>
+      <tr><th>Element</th><th>What it is</th><th>Where in code</th></tr>
+      <tr><td><strong>State</strong> (16-dim)</td><td>time-left, budget-left, and rolling averages of bid / least-winning-cost / pValue / conversion / win-rate / volume</td><td><code>train_data_generator.py</code> (offline) and rebuilt live in each strategy's <code>bidding()</code></td></tr>
+      <tr><td><strong>Action</strong> <code>α</code></td><td>one scalar bid coefficient for the step</td><td><code>action = total_bid / total_value</code></td></tr>
+      <tr><td><strong>Reward</strong></td><td>conversions won (<code>reward</code>) or summed pValue (<code>reward_continuous</code>)</td><td><code>train_data_generator.py</code></td></tr>
+      <tr><td><strong>Transition</strong></td><td><code>(state, action, reward, next_state, done)</code></td><td>one row of <code>training_data_all-rlData.csv</code></td></tr>
+    </table>
+    <div class="key"><strong>Key realization:</strong> the dataset is converted from <em>per-impression</em> rows into <em>per-(advertiser, time-step)</em> RL transitions (48,384 total). This is a textbook <strong>offline RL</strong> dataset &mdash; you learn a policy purely from logged data, never touching the live auction during training.</div>
+    <details class="more">
+      <summary>more: the 16 state features, in order</summary>
+      <div class="more-body">
+        <pre><code>[ 0] time_left                         (48 - t) / 48
+[ 1] budget_left                       remaining / budget
+[ 2] historical_bid_mean
+[ 3] last_3_bid_mean
+[ 4] historical_leastWinningCost_mean
+[ 5] historical_pValues_mean
+[ 6] historical_conversion_mean
+[ 7] historical_xi_mean                (win rate)
+[ 8] last_3_leastWinningCost_mean
+[ 9] last_3_pValues_mean
+[10] last_3_conversion_mean
+[11] last_3_xi_mean
+[12] current_pValues_mean
+[13] current_pv_num                    } normalized
+[14] last_3_pv_num_total               } at
+[15] historical_pv_num_total           } train + inference</code></pre>
+        <p>Indices 13&ndash;15 are the ones normalized via the saved <code>normalize_dict</code>. Everything &ldquo;historical&rdquo; uses only past steps (a <code>.shift(1)</code> in the generator) so there is no future leakage.</p>
+      </div>
+    </details>
+    <p><strong>Read first:</strong> <code>strategy_train_env/bidding_train_env/train_data_generator/train_data_generator.py</code> (lines ~100&ndash;145), then <code>bidding_train_env/strategy/base_bidding_strategy.py</code> for the interface every strategy implements.</p>
+  </div>
+</details>
+
+<details class="section" id="s3">
+  <summary><span class="num">3.</span> How a trained model actually bids (IQL)</summary>
+  <div class="body">
+    <p>The most important file to internalize &mdash; <code>bidding_train_env/strategy/iql_bidding_strategy.py</code>:</p>
+    <pre><code>bidding(timeStep, pValues, ..., history...):
+    1. rebuild the SAME 16-dim state from live history   (lines 46–92)
+    2. normalize it with the saved normalize_dict         (lines 97–98)
+    3. alpha = self.model(state)                          (line 101)  ← the learned policy
+    4. bids = alpha * pValues                             (line 103)
+    return bids</code></pre>
+    <div class="callout"><strong>The single most important concept:</strong> step 1 must reconstruct the <em>exact same features</em> the training data used (§2), or the model sees a different input distribution than it trained on. Compare <code>bidding()</code> lines 46&ndash;92 against <code>train_data_generator.py</code> lines 100&ndash;118 &mdash; that train/inference feature parity is where bid agents most often silently break.</div>
+    <details class="more">
+      <summary>more: why it's <code>α × pValue</code> and not a raw bid</summary>
+      <div class="more-body">
+        <p>The agent never predicts a price directly. It predicts one <em>multiplier</em> on value. An opportunity worth twice as much (double <code>pValue</code>) automatically gets double the bid, so a single scalar paces spend across thousands of heterogeneous opportunities. The learning problem collapses from &ldquo;bid on each impression&rdquo; to &ldquo;set one knob per step&rdquo; &mdash; which is why a 16&rarr;1 MLP suffices.</p>
+      </div>
+    </details>
+  </div>
+</details>
+
+<details class="section" id="s4">
+  <summary><span class="num">4.</span> The algorithm families (in learning order)</summary>
+  <div class="body">
+    <p>Start simple, then add one idea at a time. Every offline-RL method here exists to solve <strong>one</strong> problem: the dataset only shows certain actions, so a naive learner overestimates the value of actions it never saw (<em>out-of-distribution / distributional shift</em>). Each method is a different fix.</p>
+
+    <h3>A. Heuristics / control <span class="tag">no learning</span></h3>
+    <details class="more"><summary>Abid &mdash; fixed bid rate</summary><div class="more-body">A constant <code>α</code> for the whole episode. The baseline floor every other method is measured against.</div></details>
+    <details class="more"><summary>PID &mdash; control loop</summary><div class="more-body">Nudges <code>α</code> up/down to track a target spend/CPA, like a thermostat. <code>simul_bidding_env/strategy/pid_bidding_strategy.py</code>. The cleanest way to understand &ldquo;pacing&rdquo; without any ML.</div></details>
+
+    <h3>B. Optimization</h3>
+    <details class="more"><summary>OnlineLP &mdash; linear programming</summary><div class="more-body">Treats each tick as a knapsack/LP: given predicted opportunity values and costs, solve for the bidding that maximizes value under budget. Reads the <em>raw</em> CSVs to fit, not the RL transitions. <code>run/run_onlinelp.py</code> + <code>baseline/onlineLp/</code>.</div></details>
+
+    <h3>C. Offline RL <span class="tag">the heart of the repo</span></h3>
+    <details class="more"><summary>BC (Behavior Cloning) &mdash; the reference point</summary><div class="more-body">Pure supervised learning: regress <code>α</code> from state, imitating the data. No reward, no value function. Start here; everything else is &ldquo;BC + something.&rdquo;</div></details>
+    <details class="more"><summary>IQL (Implicit Q-Learning)</summary><div class="more-body">Learns a value function <em>without ever querying unseen actions</em>: a V-net via expectile regression, twin Q-nets, and an actor via advantage-weighted regression. See §5 for the full breakdown. <code>baseline/iql/iql.py</code>.</div></details>
+    <details class="more"><summary>CQL (Conservative Q-Learning)</summary><div class="more-body">Adds a term that <em>pushes down</em> Q-values on out-of-distribution actions, so the policy can't chase overestimated phantom rewards. &ldquo;Be pessimistic about what you haven't seen.&rdquo;</div></details>
+    <details class="more"><summary>BCQ (Batch-Constrained Q-learning)</summary><div class="more-body">Constrains the policy to stay near actions actually present in the data, via a generative action model. Was the slowest to train here (~71 min).</div></details>
+    <details class="more"><summary>TD3+BC</summary><div class="more-body">Standard actor-critic (TD3) <em>plus</em> a behavior-cloning regularizer, so the actor maximizes Q while staying close to the data. The &ldquo;minimal change to online RL that makes it work offline.&rdquo;</div></details>
+
+    <h3>D. Sequence modeling</h3>
+    <details class="more"><summary>Decision Transformer</summary><div class="more-body">Reframes control as sequence prediction: feed (return-to-go, state, action) tokens and autoregressively predict the next action. No value function at all. <code>baseline/dt/</code>. In our runs it overspent and got penalized &mdash; a good case study in how return-conditioning can misbehave.</div></details>
+
+    <div class="key"><strong>Suggested path:</strong> Abid &rarr; PID &rarr; BC &rarr; IQL &rarr; (CQL, BCQ, TD3+BC) &rarr; OnlineLP &rarr; DT.</div>
+  </div>
+</details>
+
+<details class="section" id="s5">
+  <summary><span class="num">5.</span> IQL deep dive &mdash; the three losses</summary>
+  <div class="body">
+    <p>IQL trains three networks together (<code>baseline/iql/iql.py</code>, method <code>step()</code>). The trick: never evaluate Q on an action the policy invents &mdash; only on actions from the data.</p>
+    <details class="more" open>
+      <summary>1. Value loss &mdash; expectile regression (<code>calc_value_loss</code>)</summary>
+      <div class="more-body">
+        <p>Fit <code>V(s)</code> to an <em>upper expectile</em> (τ=0.7) of <code>Q(s,a)</code> over dataset actions. The asymmetric loss weights positive errors more, so <code>V</code> approximates <em>max</em> Q <strong>without</strong> ever maximizing over actions (which would query OOD actions).</p>
+        <pre><code>weight = τ if (Q − V) > 0 else (1 − τ)
+loss   = weight · (Q − V)²</code></pre>
+      </div>
+    </details>
+    <details class="more">
+      <summary>2. Q loss &mdash; ordinary TD, but bootstrapped on V (<code>calc_q_loss</code>)</summary>
+      <div class="more-body">
+        <pre><code>target = reward + γ · (1 − done) · V(next_state)
+loss   = (Q(s,a) − target)²        # twin critics, take the min</code></pre>
+        <p>Because the bootstrap uses <code>V(next_state)</code> (not <code>max_a Q</code>), the target is always computed from in-distribution quantities.</p>
+      </div>
+    </details>
+    <details class="more">
+      <summary>3. Policy loss &mdash; advantage-weighted regression (<code>calc_policy_loss</code>)</summary>
+      <div class="more-body">
+        <pre><code>advantage = Q(s,a) − V(s)
+weight    = min(exp(advantage · temperature), 100)
+loss      = −(weight · log π(a|s)).mean()</code></pre>
+        <p>This is weighted behavior cloning: imitate dataset actions, but <em>upweight</em> those that beat the value baseline. The policy stays close to the data (safe offline) while leaning toward higher-advantage actions. At inference it returns the mean action, clamped ≥ 0 (<code>forward()</code>).</p>
+      </div>
+    </details>
+    <p>Hyperparameters in this repo: <code>γ=0.99, τ(tau)=0.01, expectile=0.7, temperature=3.0</code>, three Adam optimizers at <code>1e-4</code>, 20000 steps, batch 100.</p>
+  </div>
+</details>
+
+<details class="section" id="s6">
+  <summary><span class="num">6.</span> Offline-RL methods side by side</summary>
+  <div class="body">
+    <table>
+      <tr><th>Method</th><th>Uses reward?</th><th>How it avoids OOD actions</th><th>One-line essence</th></tr>
+      <tr><td>BC</td><td>No</td><td>Only ever imitates data</td><td>Copy the logged behavior</td></tr>
+      <tr><td>IQL</td><td>Yes</td><td>V via expectile; never max over actions</td><td>Weighted BC toward high advantage</td></tr>
+      <tr><td>CQL</td><td>Yes</td><td>Penalize Q on OOD actions</td><td>Be pessimistic about the unseen</td></tr>
+      <tr><td>BCQ</td><td>Yes</td><td>Generate candidate actions near data</td><td>Only consider plausible actions</td></tr>
+      <tr><td>TD3+BC</td><td>Yes</td><td>BC regularizer pulls actor to data</td><td>Online RL + &ldquo;stay close to data&rdquo;</td></tr>
+      <tr><td>Decision Transformer</td><td>Yes (as return-to-go)</td><td>Conditions on returns; no bootstrapping</td><td>Treat control as sequence prediction</td></tr>
+    </table>
+    <div class="callout">All but BC and DT learn a value function. BC ignores reward entirely; DT replaces the value function with return conditioning &mdash; which is why DT can confidently aim for a high return and <em>overspend</em>, as observed in <code>docs/report.md</code>.</div>
+  </div>
+</details>
+
+<details class="section" id="s7">
+  <summary><span class="num">7.</span> How evaluation works (two harnesses)</summary>
+  <div class="body">
+    <h3>Offline &mdash; single advertiser replay</h3>
+    <p><code>run/run_evaluate.py</code>: one advertiser replays <code>period-7.csv</code>; your agent bids against the <em>recorded</em> <code>leastWinningCost</code>. Win if <code>bid ≥ leastWinningCost</code>; conversions are <code>binomial(pValue)</code>.</p>
+    <pre><code>score = penalty · reward
+penalty = (cpa_constraint / cpa)²   if cpa > cpa_constraint   else 1</code></pre>
+    <div class="callout"><strong>As shipped it is low-signal.</strong> It instantiates the agent at <code>budget=100, cpa=2</code>, so expected conversions &lt; 1 &rarr; scores ≈ 0 for everyone. Good for understanding the scoring formula, <em>not</em> for ranking. See <code>docs/report.md</code>.</div>
+
+    <h3>Online &mdash; the full 48-agent simulator</h3>
+    <p>Root <code>main_test.py</code> &rarr; <code>run/run_test.py</code>: your agent competes against <strong>47 other agents</strong> in the real environment.</p>
+    <details class="more">
+      <summary>more: the auction loop to trace</summary>
+      <div class="more-body">
+        <ul>
+          <li><code>simul_bidding_env/Controller/Controller.py</code> &mdash; assembles the agent field + environment.</li>
+          <li><code>BiddingEnv.simulate_ad_bidding</code> &mdash; the GSP auction: top bidders win slots, pay ~the next bid, then win &rarr; expose &rarr; convert.</li>
+          <li>the <code>adjust_over_cost</code> loop &mdash; drops an agent's bids when it would overspend, then re-runs the auction; this is how the budget constraint is enforced mid-auction.</li>
+        </ul>
+      </div>
+    </details>
+    <div class="key">The per-run <code>analysis_info</code> (budget_used, cpa_exceedance, win_pv_ratio) is your diagnostic dashboard &mdash; it's how we explained <em>why</em> DT scored low (spent 100% of budget, blew the CPA constraint &rarr; heavy penalty).</div>
+  </div>
+</details>
+
+<details class="section" id="s8">
+  <summary><span class="num">8.</span> Hands-on exercises</summary>
+  <div class="body">
+    <ol>
+      <li><strong>Trace one bid:</strong> print <code>alpha</code> in <code>iql_bidding_strategy.bidding()</code> and run the offline eval &mdash; watch <code>α</code> change as budget depletes.</li>
+      <li><strong>Break feature parity:</strong> zero out one state feature in <code>bidding()</code> and see the score move &mdash; proves §3's point.</li>
+      <li><strong>Compare losses:</strong> read <code>calc_value_loss</code>/<code>calc_policy_loss</code>/<code>calc_q_loss</code> in <code>iql.py</code> and map each to the MDP in §2.</li>
+      <li><strong>Diff two algorithms:</strong> open <code>baseline/iql/iql.py</code> vs <code>baseline/td3_bc/</code> and find the <em>one</em> idea that differs (the BC regularizer).</li>
+      <li><strong>Re-run with a tweak:</strong> flip the <code>reward</code> &rarr; <code>reward_continuous</code> toggle in <code>run_iql.py</code>, retrain, re-eval, compare.</li>
+    </ol>
+  </div>
+</details>
+
+<details class="section" id="s9">
+  <summary><span class="num">9.</span> Glossary</summary>
+  <div class="body">
+    <table>
+      <tr><td><strong>pValue</strong></td><td>P(conversion | exposed); the predicted value of an opportunity.</td></tr>
+      <tr><td><strong>α / bid coefficient</strong></td><td>the single action; scales pValue into a bid.</td></tr>
+      <tr><td><strong>GSP</strong></td><td>Generalized Second Price auction; winner pays ~the next-highest bid.</td></tr>
+      <tr><td><strong>leastWinningCost</strong></td><td>the price floor to win (4th-highest bid for 3 slots).</td></tr>
+      <tr><td><strong>CPA</strong></td><td>cost per acquisition; the constraint the penalty enforces.</td></tr>
+      <tr><td><strong>Offline RL / distributional shift</strong></td><td>learning from fixed logs; the core difficulty every RL baseline here is engineered around.</td></tr>
+    </table>
+  </div>
+</details>
+
+<details class="section" id="s10">
+  <summary><span class="num">10.</span> Where to go next</summary>
+  <div class="body">
+    <ul>
+      <li>Results &amp; observations from the actual runs: <code>docs/report.md</code></li>
+      <li>The execution plan and commands: <code>docs/plan.md</code></li>
+      <li>The original paper (background, environment design): <code>docs/AuctionNet_2412.10798.pdf</code></li>
+      <li>The Markdown version of this guide: <code>docs/learning_guide.md</code></li>
+    </ul>
+  </div>
+</details>
+
+<footer>
+  AuctionNet Learning Guide &middot; self-contained HTML &middot; open in any browser. Sections use native <code>&lt;details&gt;</code> elements &mdash; no internet or build step required.
+</footer>
+</div>
+</body>
+</html>
