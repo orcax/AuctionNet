@@ -187,6 +187,13 @@ class TD3_BC(nn.Module):
     def step(self,state, action, reward, next_state, done):
         self.total_it += 1
 
+        # Move the sampled batch onto the model's device (GPU when available).
+        state = state.to(self.device)
+        action = action.to(self.device)
+        reward = reward.to(self.device)
+        next_state = next_state.to(self.device)
+        done = done.to(self.device)
+
         state, action, reward, next_state, not_done = state, action, reward, next_state, 1 - done
 
         with torch.no_grad():
@@ -237,7 +244,16 @@ class TD3_BC(nn.Module):
         '''
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
-        scripted_policy = torch.jit.script(self.cpu())
+        # Move to CPU and sync device attrs BEFORE scripting, so the scripted
+        # forward bakes in cpu (jit captures self.device's value at script time).
+        self.cpu()
+        cpu = torch.device('cpu')
+        self.device = cpu
+        self.actor.device = cpu
+        self.actor_target.device = cpu
+        self.critic.device = cpu
+        self.critic_target.device = cpu
+        scripted_policy = torch.jit.script(self)
         scripted_policy.save(save_path + "/td3_bc_model" + ".pth")
 
 

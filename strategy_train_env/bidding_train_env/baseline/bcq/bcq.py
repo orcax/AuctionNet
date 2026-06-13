@@ -156,7 +156,7 @@ class VAE(nn.Module):
         return self.max_action * torch.tanh(self.d3(a))
 
     def decode(self, state):
-        z = torch.randn((state.shape[0], self.latent_dim)).to(self.device).clamp(-0.5, 0.5)
+        z = torch.randn((state.shape[0], self.latent_dim), device=state.device).clamp(-0.5, 0.5)
         a = F.mish(self.d1(torch.cat([state, z], 1)))
         a = F.mish(self.d2(a))
         return self.max_action * torch.tanh(self.d3(a))
@@ -252,6 +252,12 @@ class BCQ(nn.Module):
         return action[ind].cpu().data.numpy().flatten()
 
     def step(self, state, action, reward, next_state, terminal):
+        # Move the sampled batch onto the model's device (GPU when available).
+        state = state.to(self.device)
+        action = action.to(self.device)
+        reward = reward.to(self.device)
+        next_state = next_state.to(self.device)
+        terminal = terminal.to(self.device)
         # Variational Auto-Encoder Training
         batch_size=state.shape[0]
         recon, mean, std = self.vae(state, action)
@@ -310,9 +316,13 @@ class BCQ(nn.Module):
     def save_jit(self, save_path: str):
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
-        # Script each submodule individually
-        #torch.save(self.cpu(),save_path + "/bcq_model" + ".pth")
-        scripted_policy = torch.jit.script(self.cpu())
+        # Move to CPU and sync device attrs BEFORE scripting, so the scripted
+        # forward bakes in cpu (jit captures self.device's value at script time).
+        self.cpu()
+        cpu = torch.device('cpu')
+        self.device = cpu
+        self.vae.device = cpu
+        scripted_policy = torch.jit.script(self)
         scripted_policy.save(save_path + "/bcq_model" + ".pth")
 
 

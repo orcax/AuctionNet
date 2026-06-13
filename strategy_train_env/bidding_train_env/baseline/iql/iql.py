@@ -140,6 +140,12 @@ class IQL(nn.Module):
         '''
         train model
         '''
+        # Move the sampled batch onto the model's device (GPU when available).
+        states = states.type(self.FloatTensor)
+        actions = actions.type(self.FloatTensor)
+        rewards = rewards.type(self.FloatTensor)
+        next_states = next_states.type(self.FloatTensor)
+        dones = dones.type(self.FloatTensor)
 
         self.value_optimizer.zero_grad()
         value_loss = self.calc_value_loss(states, actions)
@@ -168,7 +174,9 @@ class IQL(nn.Module):
         '''
         take action
         '''
-        states = torch.Tensor(states).type(self.FloatTensor)
+        # Follow the model's actual device (it may have been moved to CPU by save_jit).
+        device = next(self.actors.parameters()).device
+        states = torch.Tensor(states).to(device)
         if self.deterministic_action:
             actions = self.actors.get_det_action(states)
         else:
@@ -191,7 +199,7 @@ class IQL(nn.Module):
             min_Q = torch.min(q1, q2)
 
         exp_a = torch.exp(min_Q - v) * self.temperature
-        exp_a = torch.min(exp_a, torch.FloatTensor([100.0]))
+        exp_a = torch.clamp(exp_a, max=100.0)  # device-safe equiv. of min(exp_a, 100.0)
 
         _, dist = self.actors.evaluate(states)
         log_probs = dist.log_prob(actions)

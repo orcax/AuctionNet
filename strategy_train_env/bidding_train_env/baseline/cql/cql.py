@@ -82,7 +82,7 @@ class CQL(nn.Module):
         self.qf2_optimizer = optim.Adam(self.qf2.parameters(), lr=critic_lr)
 
         self.target_entropy = -dim_actions
-        self.log_alpha = torch.zeros(1, requires_grad=True)
+        self.log_alpha = torch.zeros(1, requires_grad=True, device=self.device)  # plain tensor; self.to() won't move it
         self.alpha_optimizer = optim.Adam([self.log_alpha], lr=actor_lr)
         self.min_q_weight = 1.0
 
@@ -216,6 +216,7 @@ class CQL(nn.Module):
         if not os.path.isdir(save_path):
             os.makedirs(save_path)
         scripted_policy = torch.jit.script(self.cpu())
+        self.device = torch.device('cpu')  # model moved to CPU above; keep device in sync
         scripted_policy.save(save_path + "/cql_model" + ".pth")
 
     def load_net(self, load_path="saved_model/fixed_initial_budget", device='cuda:0') -> None:
